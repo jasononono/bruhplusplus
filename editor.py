@@ -27,6 +27,8 @@ class Editor:
         self.lineSpacing = 1.2
         self.charSpacing = 0.6
         self.msgbox = None
+        self.fileName = None
+        self.lastSaved = ''
         
     def Update(self, scr):
         row = 0
@@ -154,8 +156,6 @@ def Colour():
     return result
 
 p.init()
-p.display.set_caption('Untitled')
-fileName = None
 
 scrWidth, scrHeight = 800, 600
 scr = p.display.set_mode([scrWidth, scrHeight])
@@ -189,22 +189,24 @@ while run:
         for e in p.event.get():
             if e.type == p.QUIT:
                 run = False
-            if e.type == p.KEYDOWN and type(editor.msgbox) == FileInput:
-                if e.unicode.lower() in '1234567890qwertyuiopasdfghjklzxcvbnm-_':
-                    editor.msgbox.inputTxt += e.unicode
-                elif e.key == p.K_BACKSPACE:
-                    editor.msgbox.inputTxt = editor.msgbox.inputTxt[:-1]
-                elif e.key == p.K_ESCAPE:
+            if e.type == p.KEYDOWN:
+                editor.msgbox = editor.msgbox.KeyPressed(e)
+                if type(editor.msgbox) == list:
+                    if editor.msgbox[1] == 'r':
+                        with open(editor.msgbox[0] + '.bpp', 'r') as f:
+                            editor.text = f.read()
+                        editor.cursor.pos = len(editor.text)
+                        editor.fileName = editor.msgbox[0]
+                        editor.lastSaved = editor.text
+                    elif editor.msgbox[1] == 'w':
+                        with open(editor.msgbox[0] + '.bpp', 'w') as f:
+                            f.write(editor.text)
+                        editor.lastSaved = editor.text
+                        editor.fileName = editor.msgbox[0]
                     editor.msgbox = None
-                    break
-                elif e.key == p.K_RETURN:
-                    with open(editor.msgbox.inputTxt + '.bpp', 'r') as f:
-                        editor.text = f.read()
-                    editor.cursor.pos = len(editor.text)
-                    editor.msgBox = None
+                elif editor.msgbox is None:
                     break
         continue
-    print('goofy')
 
     # INPUTS
     k = p.key.get_pressed()
@@ -252,5 +254,10 @@ while run:
     editor.colour = Colour()
     editor.Update(scr)
     p.display.flip()
+
+    if editor.lastSaved == editor.text:
+        p.display.set_caption('untitled.bpp' if editor.fileName is None else f'{editor.fileName}.bpp')
+    else:
+        p.display.set_caption('*untitled.bpp*' if editor.fileName is None else f'*{editor.fileName}.bpp*')
 
 p.quit()

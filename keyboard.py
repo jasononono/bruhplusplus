@@ -19,27 +19,45 @@ class alt:
     pass
 
 class Msgbox:
-    def __init__(self, msg, size, msgOffset = 16):
+    def __init__(self, msg, size, font, fontSize, msgOffset = 16):
         self.msg = msg
         self.width, self.height = size
         self.scrWidth , self.scrHeight = p.display.get_window_size()
-        self.text = p.font.SysFont('Menlo', 16).render(self.msg, True, [0, 0, 0])
+        self.text = p.font.SysFont(font, fontSize).render(self.msg, True, [0, 0, 0])
         self.textRect = self.text.get_rect(center = [self.scrWidth / 2, (self.scrHeight - size[1]) / 2 + msgOffset])
+        self.font = font
+        self.fontSize = fontSize
 
     def Update(self, scr):
         p.draw.rect(scr, [255, 255, 255], [(self.scrWidth - self.width) / 2, (self.scrHeight - self.height) / 2, self.width, self.height])
         scr.blit(self.text, self.textRect)
 
+    def KeyPressed(self, event):
+        if event.key == p.K_ESCAPE or event.key == p.K_RETURN:
+            return None
+        return self
+
 class FileInput(Msgbox):
-    def __init__(self, msg, size, msgOffset = 25):
-        super().__init__(msg, size, msgOffset)
+    def __init__(self, msg, intent, size, font, fontSize, msgOffset = 25, inputOffset = 40):
+        super().__init__(msg, size, font, fontSize, msgOffset)
         self.inputTxt = ''
+        self.inputOffset = inputOffset
+        self.intent = intent
 
     def Update(self, scr):
         super().Update(scr)
-        inputText = p.font.SysFont('Menlo', min(25, int(self.width / (len(self.inputTxt) + 1)) + 1)).render(self.inputTxt + '.bpp', True, [0, 0, 0])
-        p.draw.rect(scr, [0, 0, 0], [(self.scrWidth - self.width) / 2 + 10, (self.scrHeight + self.height) / 2 - 50, self.width - 20, 40], 2)
-        scr.blit(inputText, [(self.scrWidth - self.width) / 2 + 15, (self.scrHeight + self.height) / 2 - 45])
+        inputText = p.font.SysFont(self.font, self.fontSize).render(self.inputTxt + '.bpp', True, [0, 0, 0])
+        p.draw.rect(scr, [0, 0, 0], [(self.scrWidth - self.width) / 2 + 10, (self.scrHeight + self.height) / 2 - self.inputOffset, self.width - 20, self.fontSize * 1.6], 2)
+        scr.blit(inputText, [(self.scrWidth - self.width) / 2 + 15, (self.scrHeight + self.height) / 2 - self.inputOffset + 5])
+
+    def KeyPressed(self, event):
+        if event.unicode.lower() in '1234567890qwertyuiopasdfghjklzxcvbnm-_':
+            self.inputTxt += event.unicode
+        elif event.key == p.K_BACKSPACE:
+            self.inputTxt = self.inputTxt[:-1]
+        elif event.key == p.K_RETURN:
+            return [self.inputTxt, self.intent]
+        return super().KeyPressed(event)
         
 
 ########## FUNCTIONS ##########
@@ -77,6 +95,11 @@ def indent(editor):
     return editor
 
 def dedent(editor):
+    return editor
+
+def highlightAll(editor):
+    editor.cursor.highlight = 0
+    editor.cursor.pos = len(editor.text)
     return editor
 
 def cursorLeft(editor):
@@ -120,12 +143,22 @@ def cursorUp(editor):
     return editor
 
 def saveFile(editor):
-    with open('bruh.bpp', 'w') as f:
-        f.write(editor.text)
+    if editor.fileName is None:
+        editor.msgbox = FileInput('Save file as:', 'w', [200, 100], 'Menlo', 20)
+    else:
+        with open(editor.fileName + '.bpp', 'w') as f:
+            f.write(editor.text)
+        editor.lastSaved = editor.text
     return editor
 
+def newFile(editor):
+    editor.text = ''
+    editor.lastSaved = ''
+    editor.cursor.pos = 0
+    editor.fileName = None
+
 def openFile(editor):
-    editor.msgbox = FileInput('Open file named:', [200, 100])
+    editor.msgbox = FileInput('Open file named:', 'r', [250, 100], 'Menlo', 20)
     return editor
 
 def halt(editor):
@@ -183,7 +216,7 @@ KB.Assign(p.K_u, 'u', 'U')
 KB.Assign(p.K_i, 'i', 'I')
 KB.Assign(p.K_o, 'o', 'O', openFile)
 KB.Assign(p.K_p, 'p', 'P')
-KB.Assign(p.K_a, 'a', 'A')
+KB.Assign(p.K_a, 'a', 'A', highlightAll)
 KB.Assign(p.K_s, 's', 'S', saveFile)
 KB.Assign(p.K_d, 'd', 'D')
 KB.Assign(p.K_f, 'f', 'F')
@@ -197,5 +230,5 @@ KB.Assign(p.K_x, 'x', 'X')
 KB.Assign(p.K_c, 'c', 'C')
 KB.Assign(p.K_v, 'v', 'V')
 KB.Assign(p.K_b, 'b', 'B')
-KB.Assign(p.K_n, 'n', 'N')
+KB.Assign(p.K_n, 'n', 'N', newFile)
 KB.Assign(p.K_m, 'm', 'M')
