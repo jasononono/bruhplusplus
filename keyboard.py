@@ -2,7 +2,7 @@
 
 import pygame as p
 import sys
-from tkinter.filedialog import asksaveasfile
+from language import *
 
 ########## MODIFIER KEYS ##########
 
@@ -19,14 +19,17 @@ class alt:
     pass
 
 class Msgbox:
-    def __init__(self, msg, size, font, fontSize, msgOffset = 16):
+    def __init__(self, msg, size, font = None, fontSize = 20, msgOffset = 16):
         self.msg = msg
         self.width, self.height = size
         self.scrWidth , self.scrHeight = p.display.get_window_size()
-        self.text = p.font.SysFont(font, fontSize).render(self.msg, True, [0, 0, 0])
-        self.textRect = self.text.get_rect(center = [self.scrWidth / 2, (self.scrHeight - size[1]) / 2 + msgOffset])
-        self.font = font
+        if font is None:
+            self.font = 'Menlo'
+        else:
+            self.font = font
         self.fontSize = fontSize
+        self.text = p.font.SysFont(self.font, self.fontSize).render(self.msg, True, [0, 0, 0])
+        self.textRect = self.text.get_rect(center = [self.scrWidth / 2, (self.scrHeight - size[1]) / 2 + msgOffset])
 
     def Update(self, scr):
         p.draw.rect(scr, [255, 255, 255], [(self.scrWidth - self.width) / 2, (self.scrHeight - self.height) / 2, self.width, self.height])
@@ -37,8 +40,23 @@ class Msgbox:
             return None
         return self
 
+class YNbox(Msgbox):
+    def __init__(self, msg, intent, size, font = None, fontSize = 20, msgOffset = 16):
+        super().__init__(msg, size, font, fontSize, msgOffset)
+        self.intent = intent
+
+    def Update(self, scr):
+        super().Update(scr)
+
+    def KeyPressed(self, event):
+        if event.key == p.K_n:
+            return None
+        if event.key == p.K_y or event.key == p.K_RETURN:
+            return [True, self.intent]
+        return super().KeyPressed(event)
+
 class FileInput(Msgbox):
-    def __init__(self, msg, intent, size, font, fontSize, msgOffset = 25, inputOffset = 40):
+    def __init__(self, msg, intent, size, font = None, fontSize = 20, msgOffset = 25, inputOffset = 40):
         super().__init__(msg, size, font, fontSize, msgOffset)
         self.inputTxt = ''
         self.inputOffset = inputOffset
@@ -144,7 +162,7 @@ def cursorUp(editor):
 
 def saveFile(editor):
     if editor.fileName is None:
-        editor.msgbox = FileInput('Save file as:', 'w', [200, 100], 'Menlo', 20)
+        editor.msgbox = FileInput('Save file as:', 'w', [200, 100])
     else:
         with open(editor.fileName + '.bpp', 'w') as f:
             f.write(editor.text)
@@ -158,12 +176,19 @@ def newFile(editor):
     editor.fileName = None
 
 def openFile(editor):
-    editor.msgbox = FileInput('Open file named:', 'r', [250, 100], 'Menlo', 20)
+    editor.msgbox = FileInput('Open file named:', 'r', [250, 100])
+    return editor
+
+def run(editor):
+    #I.Run(editor.text)
     return editor
 
 def halt(editor):
-    p.quit()
-    sys.exit()
+    if editor.lastSaved == editor.text:
+        p.quit()
+        sys.exit()
+    editor.msgbox = YNbox('You have unsaved progress. Quit? (y/n)', 'q', [500, 50], msgOffset = 27)
+    return editor
     
 
 ########## KEYBOARD ##########
@@ -209,7 +234,7 @@ KB.Assign(p.K_SLASH, '/', '?')
 KB.Assign(p.K_q, 'q', 'Q')
 KB.Assign(p.K_w, 'w', 'W', halt)
 KB.Assign(p.K_e, 'e', 'E')
-KB.Assign(p.K_r, 'r', 'R')
+KB.Assign(p.K_r, 'r', 'R', run)
 KB.Assign(p.K_t, 't', 'T')
 KB.Assign(p.K_y, 'y', 'Y')
 KB.Assign(p.K_u, 'u', 'U')

@@ -1,5 +1,4 @@
 from keyboard import *
-from language import *
 
 class Cursor:
     def __init__(self, size):
@@ -123,7 +122,7 @@ def Keyword(word, string):
     
     if string:
         colour = [60, 180, 40]
-    elif word in P.functions.keys():
+    elif word in I.functions.keys():
         colour = [110, 50, 180]
         
     return [colour for _ in range(len(word))]
@@ -154,6 +153,15 @@ def Colour():
             
     result.extend(Keyword(word, string))
     return result
+    
+def read(name):
+    try:
+        f = open(name, 'r')
+    except:
+        return FileNotFoundError
+    txt = f.read()
+    f.close()
+    return txt
 
 p.init()
 
@@ -188,21 +196,27 @@ while run:
         
         for e in p.event.get():
             if e.type == p.QUIT:
-                run = False
+                editor = halt(editor)
             if e.type == p.KEYDOWN:
                 editor.msgbox = editor.msgbox.KeyPressed(e)
                 if type(editor.msgbox) == list:
                     if editor.msgbox[1] == 'r':
-                        with open(editor.msgbox[0] + '.bpp', 'r') as f:
-                            editor.text = f.read()
-                        editor.cursor.pos = len(editor.text)
-                        editor.fileName = editor.msgbox[0]
-                        editor.lastSaved = editor.text
+                        result = read(editor.msgbox[0] + '.bpp')
+                        if result is FileNotFoundError:
+                            editor.msgbox = Msgbox(f"File '{editor.msgbox[0] + '.bpp'}' does not exist.", [350 + (len(editor.msgbox[0]) + 4) * 10, 50], msgOffset = 25)
+                            break
+                        else:
+                            editor.text = result
+                            editor.cursor.pos = len(editor.text)
+                            editor.fileName = editor.msgbox[0]
+                            editor.lastSaved = result
                     elif editor.msgbox[1] == 'w':
                         with open(editor.msgbox[0] + '.bpp', 'w') as f:
                             f.write(editor.text)
                         editor.lastSaved = editor.text
                         editor.fileName = editor.msgbox[0]
+                    elif editor.msgbox[1] == 'q':
+                        run = False
                     editor.msgbox = None
                 elif editor.msgbox is None:
                     break
@@ -217,7 +231,7 @@ while run:
     # EVENTS
     for e in p.event.get():
         if e.type == p.QUIT:
-            run = False
+            editor = halt(editor)
         if e.type == p.KEYDOWN:
             keyPressed = e.key
             Press(editor, keyPressed, modifier)
@@ -256,8 +270,9 @@ while run:
     p.display.flip()
 
     if editor.lastSaved == editor.text:
-        p.display.set_caption('untitled.bpp' if editor.fileName is None else f'{editor.fileName}.bpp')
+        p.display.set_caption('untitled' if editor.fileName is None else f'{editor.fileName}.bpp')
     else:
-        p.display.set_caption('*untitled.bpp*' if editor.fileName is None else f'*{editor.fileName}.bpp*')
+        p.display.set_caption('*untitled*' if editor.fileName is None else f'*{editor.fileName}.bpp*')
 
 p.quit()
+sys.exit()

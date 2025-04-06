@@ -1,11 +1,5 @@
-def out():
-    return
-
-def declare():
-    return
-
-class Program:
+class Interpreter:
     def __init__(self):
-        self.functions = {'yap': out, 'bruh': declare}
+        self.functions = {'yap': None, 'bruh': None, 'add': None}
 
-P = Program()
+I = Interpreter()
