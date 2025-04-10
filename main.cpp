@@ -1,5 +1,4 @@
-#include "tokenizer.hpp"
-#include "parser.hpp"
+#include "parser.cpp"
 #include <iostream>
 
 using namespace std;

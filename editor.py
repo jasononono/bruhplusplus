@@ -73,7 +73,7 @@ class Editor:
 
     def CoordToPos(self, row, column, l = None):
         if l is None:
-            l = PosToCoord(self)[2]
+            l = self.PosToCoord(self)[2]
         if column > l[row]:
             column = l[row]
         return sum(l[:row]) + row + column

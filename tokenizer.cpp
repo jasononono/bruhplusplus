@@ -180,7 +180,7 @@ namespace bpp_parser {
         } else if (token.mType != WHITESPACE) {
             tokens.push_back(token);
         }
-        if (token.mType = POTENTIAL_FLOAT) {
+        if (token.mType == POTENTIAL_FLOAT) {
             if (token.mText.compare(".") == 0) {
                 token.mType = OPERATOR;
             } else {
