@@ -2,7 +2,7 @@
 
 import pygame as p
 import sys
-from language import *
+from syntax import *
 
 ########## MODIFIER KEYS ##########
 
@@ -180,7 +180,6 @@ def openFile(editor):
     return editor
 
 def run(editor):
-    #I.Run(editor.text)
     return editor
 
 def halt(editor):

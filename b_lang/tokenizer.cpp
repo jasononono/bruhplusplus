@@ -1,6 +1,4 @@
 #include "tokenizer.hpp"
-#include <stdexcept>
-#include <iostream>
 
 namespace bpp_parser {
 
@@ -81,19 +79,36 @@ namespace bpp_parser {
                     }
                     break;
 
-                // IDENTIFIERS
+                // OPERATORS
 
+                case '`':
+                case '~':
                 case '!':
-                case '=':
-                case '+':
-                case '-':
+                case '@':
+                case '#':
+                case '$':
+                case '%':
+                case '^':
+                case '&':
                 case '*':
-                case '{':
-                case '}':
-                case '[':
-                case ']':
                 case '(':
                 case ')':
+                case '-':
+                case '_':
+                case '=':
+                case '+':
+                case '[':
+                case ']':
+                case '{':
+                case '}':
+                case '|':
+                case ';':
+                case ':':
+                case '"':
+                case ',':
+                case '<':
+                case '>':
+                case '?':
                     if (currentToken.mType != STRING_LITERAL) {
                         endToken(currentToken, tokens);
                         currentToken.mType = OPERATOR;

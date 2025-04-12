@@ -1,35 +1,17 @@
 #pragma once
 
 #include "tokenizer.cpp"
-#include <optional>
-#include <string>
-#include <map>
 
 namespace bpp_parser {
     
     using namespace std;
-    
-    enum BUILTIN_TYPE {
-        VOID,
-        INT32,
-        UINT32,
-        INT8
-    };
-    
-    class Type {
-    public:
-        Type(const string &name = "", enum BUILTIN_TYPE type = VOID) : mName(name), mType(type) {}
-        
-        string mName;
-        enum BUILTIN_TYPE mType;
-        vector<Type> mFields; // for STRUCT only.
-    };
     
     class Parser {
     public:
         Parser();
     
         void parse(vector<Token> &tokens);
+        void debugPrint() const;
         
     private:
         optional<Type> expectType();
@@ -42,5 +24,9 @@ namespace bpp_parser {
         vector<Token>::iterator mCurrentToken;
         vector<Token>::iterator mEndToken;
         map<string, Type> mTypes;
+        map<string, FunctionDefinition> mFunctions;
+
+        optional<vector<Statement>> parseFunctionBody();
+        optional<Statement> parseOneStatement();
     };
 }

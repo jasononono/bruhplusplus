@@ -122,7 +122,7 @@ def Keyword(word, string):
     
     if string:
         colour = [60, 180, 40]
-    elif word in I.functions.keys():
+    elif word in S.functions.keys():
         colour = [110, 50, 180]
         
     return [colour for _ in range(len(word))]
