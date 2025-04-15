@@ -124,14 +124,16 @@ namespace bpp_parser {
 
         vector<Statement> statements;
 
-        optional<Statement> statement = parseOneStatement();
-        if (statement.has_value()) {
-            statements.push_back(statement.value());
-        }
+        while (!expectOperator("}").has_value()) {
+            optional<Statement> statement = expectOneValue();
+            if (statement.has_value()) {
+                statements.push_back(statement.value());
+            }
 
-        // if (!expectOperator("}").has_value()) {
-        //     throw runt ime_error("Unbalanced '{'.");
-        // }
+            if (!expectOperator(";").has_value()) {
+                throw runtime_error("Expected ';' at the end of statement");
+            }
+        }
 
         return statements;
     }
@@ -142,7 +144,41 @@ namespace bpp_parser {
         }
     }
 
-    optional<Statement> Parser::parseOneStatement() {
+    optional<Statement> Parser::expectOneValue() {
+        optional<Statement> result;
+
+        if (mCurrentToken != mEndToken && mCurrentToken -> mType == FLOAT_LITERAL) {
+            Statement doubleLiteralStatement;
+            doubleLiteralStatement.mKind = StatementKind::LITERAL;
+            doubleLiteralStatement.mName = mCurrentToken -> mText;
+            doubleLiteralStatement.mType = Type("double", DOUBLE);
+            result = doubleLiteralStatement;
+            ++mCurrentToken;
+        } else if (mCurrentToken != mEndToken && mCurrentToken -> mType == INTEGER_LITERAL) {
+            Statement integerLiteralStatement;
+            integerLiteralStatement.mKind = StatementKind::LITERAL;
+            integerLiteralStatement.mName = mCurrentToken -> mText;
+            integerLiteralStatement.mType = Type("signed integer", INT32);
+            result = integerLiteralStatement;
+            ++mCurrentToken;
+        } else if (mCurrentToken != mEndToken && mCurrentToken -> mType == STRING_LITERAL) {
+            Statement stringLiteralStatement;
+            stringLiteralStatement.mKind = StatementKind::LITERAL;
+            stringLiteralStatement.mName = mCurrentToken -> mText;
+            stringLiteralStatement.mType = Type("string", UINT8);
+            result = stringLiteralStatement;
+            ++mCurrentToken;
+        } else {
+            result = expectVariableDeclaration();
+        }
+
+        if (!result.has_value()) {
+            result = expectFunctionCall();
+        }
+        return result;
+    }
+
+    optional<Statement> Parser::expectVariableDeclaration() {
         vector<Token>::iterator startToken = mCurrentToken;
         optional<Type> possibleType = expectType();
         if (!possibleType.has_value()) {
@@ -162,6 +198,51 @@ namespace bpp_parser {
         statement.mName = possibleVariableName -> mText;
         statement.mType = possibleType.value();
 
+        if (expectOperator("=").has_value()) {
+            optional<Statement> initialValue = expectOneValue();
+            if (!initialValue.has_value()) {
+                throw runtime_error("Expected initial value to assign the variable to");
+            }
+
+            statement.mParameters.push_back(initialValue.value());
+        }
+
         return statement;
+    }
+
+    optional<Statement> Parser::expectFunctionCall() {
+        vector<Token>::iterator startToken = mCurrentToken;
+
+        optional<Token> possibleFunctionName = expectIdentifier();
+        if (!possibleFunctionName.has_value()) {
+            mCurrentToken = startToken;
+            return nullopt;
+        }
+
+        if (!expectOperator("(").has_value()) {
+            mCurrentToken = startToken;
+            return nullopt;
+        }
+
+        Statement functionCall;
+        functionCall.mKind = StatementKind::FUNCTION_CALL;
+        functionCall.mName = possibleFunctionName -> mText;
+
+        while (!expectOperator(")").has_value()) {
+            optional<Statement> parameter = expectOneValue();
+            if (!parameter.has_value()) {
+                throw runtime_error("Expected expression as parameter.");
+            }
+            functionCall.mParameters.push_back(parameter.value());
+
+            if (expectOperator(")").has_value()) {
+                break;
+            }
+            if (!expectOperator(",").has_value()) {
+                throw runtime_error("Expected ',' to seperate parameters.");
+            }
+        }
+
+        return functionCall;
     }
 }

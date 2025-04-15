@@ -8,13 +8,20 @@ namespace bpp_parser {
 
     enum class StatementKind {
         VARIABLE_DECLARATION,
-        FUNCTION_CALL
+        FUNCTION_CALL,
+        LITERAL
+    };
+
+    static const char* sStatementKindStrings[] = {
+        "VARIABLE_DECLARATION",
+        "FUNCTION_CALL",
+        "LITERAL"
     };
 
     class Statement {
     public:
         string mName;
-        Type mType;
+        Type mType{Type("void", VOID)};
         vector<Statement> mParameters;
         StatementKind mKind{StatementKind::FUNCTION_CALL};
 

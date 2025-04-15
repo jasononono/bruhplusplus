@@ -5,10 +5,11 @@ namespace bpp_parser {
     using namespace std;
 
     void Statement::debugPrint() {
-        cout << mType.mName << " " << mName << " ";
+        cout << sStatementKindStrings[int(mKind)] << " ";
+        cout << mType.mName << " " << mName << " " << " (\n";
         for (Statement statement : mParameters) {
             statement.debugPrint();
         }
-        cout << endl;
+        cout << ")" << endl; 
     }
 }

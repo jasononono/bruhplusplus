@@ -1,0 +1,19 @@
+// this is an example program written in Bruh++.
+
+def square w/ base arg;               // a function named square
+   if arg is true,
+     back (square (base ^ 2) false)  // return by calling the function again
+   back (base ^ 2)
+
+loop i for (0 ~ 100);                 // for loop that runs from 0 through 100
+   print (square i (i % 2))           // print the square function of i and pass true if it is odd
+   if not (i % 5),
+      again                           // continue
+   elif i = 30,
+      break
+
+var thing = 'hello world!'            // initialize a variable (string)
+var thing2 = "\n<x>"                  // initialize a formatted string (f-string)
+list thing3 = [thing`thing2]          // creating a list named thing3
+
+print thing3 nl                       // print the items joined with new line

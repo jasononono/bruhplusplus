@@ -11,7 +11,11 @@ namespace bpp_parser {
             param.debugPrint();
         }
 
-        cout << ")" << endl;
+        cout << ")\n{\n";
+        for (Statement statement : mStatements) {
+            statement.debugPrint();
+        }
+        cout << "}" << endl;
     }
 
     void ParameterDefinition::debugPrint() const {

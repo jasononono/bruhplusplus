@@ -1,3 +1,4 @@
 void main(int argc, char argv) {
-    foo1 = 123
+    double foo = 1.5;
+    printf('hello');
 }

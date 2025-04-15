@@ -27,6 +27,8 @@ namespace bpp_parser {
         map<string, FunctionDefinition> mFunctions;
 
         optional<vector<Statement>> parseFunctionBody();
-        optional<Statement> parseOneStatement();
+        optional<Statement> expectOneValue();
+        optional<Statement> expectVariableDeclaration();
+        optional<Statement> expectFunctionCall();
     };
 }
