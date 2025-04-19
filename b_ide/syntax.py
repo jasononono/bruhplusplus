@@ -1,5 +1,5 @@
 class Syntax:
     def __init__(self):
-        self.functions = {'yap': None, 'bruh': None, 'add': None}
+        self.functions = {'print': None, 'var': None, 'add': None}
 
 S = Syntax()
