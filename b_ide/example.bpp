@@ -1,4 +1,4 @@
-// this is an example program written in Bruh++.
+// this is an example program written in Bruh++ (B++ VERSION 1).
 
 def square w/ base arg;               // a function named square
    if arg is true,
