@@ -82,12 +82,15 @@ class TextEditor(TextDisplay):
         return min(len(self.text), max(0, pos))
 
     def get_mouse_coordinates(self, coord):
-        if (coord[0] < self.x or coord[0] > self.x + self.width or
-            coord[1] < self.y or coord[1] > self.y + self.height):
-           return None
         column = round((coord[0] - self.x - self.margin[0]) / self.spacing[0] / self.font.size)
         row = min(int((coord[1] - self.y - self.margin[1]) / self.spacing[1] / self.font.size), len(self.grid) - 1)
         return row, column
+
+    def valid_mouse_position(self, position):
+        if (position[0] < self.x or position[0] > self.x + self.width or
+            position[1] < self.y or position[1] > self.y + self.height):
+           return False
+        return True
 
     def display(self, surface, text, index, position):
         coord = (self.x + self.margin[0] + position[0] * self.font.size * self.spacing[0],
@@ -107,39 +110,91 @@ class TextEditor(TextDisplay):
     def update(self, surface):
         super().update(surface)
 
-        if self.highlight.position is None:
-            coord = self.get_coordinates(self.cursor.position)
-            self.cursor.update(surface, self.font.size, coord, self.spacing,
-                               (self.x + self.margin[0], self.y + self.margin[1]))
+        coord = self.get_coordinates(self.cursor.position)
+        self.cursor.update(surface, self.font.size, coord, self.spacing,
+                           (self.x + self.margin[0], self.y + self.margin[1]))
 
     def append(self, txt):
-        self.text = self.text[:self.cursor.position] + txt + self.text[self.cursor.position:]
-        self.cursor.position += len(txt)
+        if self.highlight.position is None:
+            self.text = self.text[:self.cursor.position] + txt + self.text[self.cursor.position:]
+            self.cursor.position += len(txt)
+        else:
+            self.text = (self.text[:min(self.cursor.position, self.highlight.position)] + txt +
+                         self.text[max(self.cursor.position, self.highlight.position):])
+            self.cursor.position = min(self.cursor.position, self.highlight.position) + len(txt)
+        self.highlight.position = None
 
     def delete(self):
-        if self.cursor.position > 0:
+        if self.highlight.position is not None:
+            self.text = (self.text[:min(self.cursor.position, self.highlight.position)] +
+                         self.text[max(self.cursor.position, self.highlight.position):])
+            self.cursor.position = min(self.cursor.position, self.highlight.position)
+        elif self.cursor.position > 0:
             self.text = self.text[:self.cursor.position - 1] + self.text[self.cursor.position:]
             self.cursor.position -= 1
+        self.highlight.position = None
 
     def indent(self):
         self.append("    ")
 
     def cursor_left(self):
-        if self.cursor.position > 0:
+        if self.highlight.position is not None:
+            self.cursor.position = min(self.cursor.position, self.highlight.position)
+            self.highlight.position = None
+        elif self.cursor.position > 0:
             self.cursor.position -= 1
         self.cursor.blink = 0
 
+
     def cursor_right(self):
-        if self.cursor.position < len(self.text):
+        if self.highlight.position is not None:
+            self.cursor.position = max(self.cursor.position, self.highlight.position)
+            self.highlight.position = None
+        elif self.cursor.position < len(self.text):
             self.cursor.position += 1
         self.cursor.blink = 0
 
     def cursor_down(self):
+        if self.highlight.position is not None:
+            self.cursor.position = max(self.cursor.position, self.highlight.position)
+            self.highlight.position = None
         column, row = self.get_coordinates(self.cursor.position)
         self.cursor.position = len(self.text) if row == len(self.grid) - 1 else self.get_position((row + 1, column))
         self.cursor.blink = 0
 
     def cursor_up(self):
+        if self.highlight.position is not None:
+            self.cursor.position = min(self.cursor.position, self.highlight.position)
+            self.highlight.position = None
+        column, row = self.get_coordinates(self.cursor.position)
+        self.cursor.position = 0 if row == 0 else self.get_position((row - 1, column))
+        self.cursor.blink = 0
+
+    def highlight_left(self):
+        if self.highlight.position is None:
+            self.highlight.position = self.cursor.position
+        if self.cursor.position > 0:
+            self.cursor.position -= 1
+        self.cursor.blink = 0
+
+
+    def highlight_right(self):
+        if self.highlight.position is None:
+            self.highlight.position = self.cursor.position
+        if self.cursor.position < len(self.text):
+            self.cursor.position += 1
+        self.cursor.blink = 0
+
+    def highlight_down(self):
+        if self.highlight.position is None:
+            self.highlight.position = self.cursor.position
+        column, row = self.get_coordinates(self.cursor.position)
+        self.cursor.position = len(self.text) if row == len(self.grid) - 1 else self.get_position((row + 1, column))
+        self.cursor.blink = 0
+
+    def highlight_up(self):
+        if self.highlight.position is None:
+            self.highlight.position = self.cursor.position
         column, row = self.get_coordinates(self.cursor.position)
         self.cursor.position = 0 if row == 0 else self.get_position((row - 1, column))
         self.cursor.blink = 0

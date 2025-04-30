@@ -10,5 +10,12 @@ class Font:
         self.name = name
         self.template = p.font.SysFont(name, self.size)
 
+    def resize(self, size = 15):
+        self.size = size
+        self.template = p.font.SysFont(self.name, size)
+
+    def get_size(self, text):
+        return self.template.size(text)
+
     def render(self, text = '', colour = (0, 0, 0), background = None):
         return self.template.render(text, True, colour, background)

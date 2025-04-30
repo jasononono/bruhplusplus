@@ -1,6 +1,6 @@
+import pygame as p
 from keyboard import keyboard
 from editor import TextEditor
-import pygame as p
 
 class Screen:
     def __init__(self, size = (800, 600), bg = (255, 255, 255)):
@@ -13,6 +13,7 @@ class Screen:
         self.keyPressed = None
         self.keyCooldown = 0
         self.modifier = None
+        self.mouseDown = False
 
         self.execute = True
 
@@ -31,7 +32,7 @@ class Screen:
             return "alt"
         return None
 
-    def press(self, keys):
+    def press(self):
         key = keyboard.retrieve(self.keyPressed, self.modifier)
         if key is None:
             return
@@ -47,15 +48,18 @@ class Screen:
                 self.execute = False
             if e.type == p.KEYDOWN and e.key in keyboard.map.keys():
                 self.keyPressed = e.key
-                self.press(keys)
+                self.press()
                 self.keyCooldown = 10
             if e.type == p.KEYUP and e.key == self.keyPressed:
                 self.keyPressed = None
             if e.type == p.MOUSEBUTTONDOWN:
                 coord = self.editor.get_mouse_coordinates(mousePos)
-                if coord is not None:
+                if self.editor.valid_mouse_position(mousePos):
+                    self.mouseDown = True
                     if self.modifier == "shift":
-                        self.editor.highlight.position = self.editor.get_position(coord)
+                        if self.editor.highlight.position is None:
+                            self.editor.highlight.position = self.editor.cursor.position
+                        self.editor.cursor.position = self.editor.get_position(coord)
                     else:
                         self.editor.cursor.position = self.editor.get_position(coord)
                         self.editor.cursor.blink = 0
@@ -65,17 +69,21 @@ class Screen:
             if self.keyCooldown > 0:
                 self.keyCooldown -= 1
             else:
-                self.press(keys)
+                self.press()
                 self.keyCooldown = 1
 
-        if mouse[0]:
+        if not mouse[0]:
+            self.mouseDown = False
+        if self.mouseDown:
             coord = self.editor.get_mouse_coordinates(mousePos)
-            if coord is not None:
-                position = self.editor.get_position(coord)
-                if position == self.editor.cursor.position:
+            position = self.editor.get_position(coord)
+            if position != self.editor.cursor.position:
+                if position == self.editor.highlight.position:
                     self.editor.highlight.position = None
-                else:
-                    self.editor.highlight.position = position
+                elif self.editor.highlight.position is None:
+                    self.editor.highlight.position = self.editor.cursor.position
+                self.editor.cursor.position = position
+                self.editor.cursor.blink = 0
 
         self.surface.fill(self.bg)
         self.editor.update(self.surface)
