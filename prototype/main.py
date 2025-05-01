@@ -10,6 +10,7 @@ class Screen:
         self.editor = TextEditor("", (10, 10), (self.width - 20, self.height - 20))
 
         self.execute = True
+        self.focus = self.editor
 
     def update(self):
         events = p.event.get()
@@ -22,7 +23,12 @@ class Screen:
                 self.execute = False
 
         self.surface.fill(self.bg)
-        self.editor.update(self.surface, events, keys, mouse, mouse_pos)
+
+        if self.focus is self.editor:
+            self.editor.update(self.surface, events, keys, mouse, mouse_pos)
+        else:
+            self.editor.template.update(self.surface, False)
+
         p.display.flip()
 
 p.init()
