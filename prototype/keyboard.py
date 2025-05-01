@@ -1,5 +1,5 @@
 import pygame as p
-from editorTemplate import TextEditorTemplate
+from editor import TextEditor
 
 class Key:
     def __init__(self, base = None, shift = None, ctrl = None, alt = None):
@@ -30,12 +30,12 @@ class Keyboard:
 
 keyboard = Keyboard()
 
-keyboard.assign(p.K_LEFT, TextEditorTemplate.cursor_left, TextEditorTemplate.highlight_left)
-keyboard.assign(p.K_RIGHT, TextEditorTemplate.cursor_right, TextEditorTemplate.highlight_right)
-keyboard.assign(p.K_DOWN, TextEditorTemplate.cursor_down, TextEditorTemplate.highlight_down)
-keyboard.assign(p.K_UP, TextEditorTemplate.cursor_up, TextEditorTemplate.highlight_up)
-keyboard.assign(p.K_BACKSPACE, TextEditorTemplate.delete)
-keyboard.assign(p.K_TAB, TextEditorTemplate.indent)
+keyboard.assign(p.K_LEFT, TextEditor.cursor_left, TextEditor.highlight_left)
+keyboard.assign(p.K_RIGHT, TextEditor.cursor_right, TextEditor.highlight_right)
+keyboard.assign(p.K_DOWN, TextEditor.cursor_down, TextEditor.highlight_down)
+keyboard.assign(p.K_UP, TextEditor.cursor_up, TextEditor.highlight_up)
+keyboard.assign(p.K_BACKSPACE, TextEditor.delete)
+keyboard.assign(p.K_TAB, TextEditor.indent)
 keyboard.assign(p.K_RETURN, '\n')
 keyboard.assign(p.K_SPACE, ' ', ' ')
 keyboard.assign(p.K_1, '1', '!')
@@ -69,7 +69,7 @@ keyboard.assign(p.K_u, 'u', 'U')
 keyboard.assign(p.K_i, 'i', 'I')
 keyboard.assign(p.K_o, 'o', 'O')
 keyboard.assign(p.K_p, 'p', 'P')
-keyboard.assign(p.K_a, 'a', 'A')
+keyboard.assign(p.K_a, 'a', 'A', TextEditor.select_all)
 keyboard.assign(p.K_s, 's', 'S')
 keyboard.assign(p.K_d, 'd', 'D')
 keyboard.assign(p.K_f, 'f', 'F')
