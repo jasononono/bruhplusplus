@@ -1,6 +1,21 @@
 import pygame as p
 from keyboard import keyboard
 
+def get_modifier(keys):
+    shift = keys[p.K_LSHIFT] or keys[p.K_RSHIFT]
+    ctrl = keys[p.K_LCTRL] or keys[p.K_RCTRL] or keys[p.K_LMETA] or keys[p.K_RMETA]
+    alt = keys[p.K_LALT] or keys[p.K_RALT]
+
+    if shift + ctrl + alt > 1:
+        return None
+    if shift:
+        return "shift"
+    if ctrl:
+        return "ctrl"
+    if alt:
+        return "alt"
+    return None
+
 class EditorAction:
     def __init__(self, parent):
         self.keyboard = keyboard
@@ -12,21 +27,6 @@ class EditorAction:
         self.modifier = None
         self.mouseDown = False
 
-    def get_modifier(self, keys):
-        shift = keys[p.K_LSHIFT] or keys[p.K_RSHIFT]
-        ctrl = keys[p.K_LCTRL] or keys[p.K_RCTRL] or keys[p.K_LMETA] or keys[p.K_RMETA]
-        alt = keys[p.K_LALT] or keys[p.K_RALT]
-
-        if shift + ctrl + alt > 1:
-            return None
-        if shift:
-            return "shift"
-        if ctrl:
-            return "ctrl"
-        if alt:
-            return "alt"
-        return None
-
     def press(self):
         key = self.keyboard.retrieve(self.keyPressed, self.modifier)
         if key is None:
@@ -37,7 +37,7 @@ class EditorAction:
             self.editor.append(key)
 
     def update(self, event):
-        self.modifier = self.get_modifier(event.keys)
+        self.modifier = get_modifier(event.keys)
 
         for e in event.events:
             if e.type == p.KEYDOWN and e.key in self.keyboard.map.keys():
@@ -60,7 +60,9 @@ class EditorAction:
                         self.editor.highlight.position = None
 
         if self.keyPressed is not None:
-            if self.keyCooldown > 0:
+            if not event.keys[self.keyPressed]:
+                self.keyPressed = None
+            elif self.keyCooldown > 0:
                 self.keyCooldown -= 1
             else:
                 self.press()

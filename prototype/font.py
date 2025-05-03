@@ -17,5 +17,5 @@ class Font:
     def get_size(self, text):
         return self.template.size(text)
 
-    def render(self, text = '', colour = (0, 0, 0), background = None):
+    def render(self, text = '', colour = (255, 255, 255), background = None):
         return self.template.render(text, True, colour, background)
