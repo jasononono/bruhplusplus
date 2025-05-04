@@ -1,5 +1,6 @@
 from font import Font
 import dialogue
+import base
 import pygame as p
 
 class Cursor:
@@ -32,8 +33,6 @@ class TextDisplay:
         self.bg = bg
         self.grid = []
 
-        self.dialogue = {}
-
     def valid_mouse_position(self, position):
         if (position[0] < self.x or position[0] > self.x + self.width or
                 position[1] < self.y or position[1] > self.y + self.height):
@@ -60,7 +59,10 @@ class TextDisplay:
         return self.grid
 
     def update(self, screen):
-        p.draw.rect(screen.surface, self.bg, [self.x, self.y, self.width, self.height])
+        if screen.focus is self:
+            p.draw.rect(screen.surface, (142, 142, 209),
+                        (self.x - 1, self.y - 1, self.width + 2, self.height + 2))
+        p.draw.rect(screen.surface, self.bg, (self.x, self.y, self.width, self.height))
 
         row, column = 0, 0
         self.grid = []
@@ -90,6 +92,8 @@ class TextEditor(TextDisplay):
         self.action = EditorAction(self)
         self.cursor = Cursor(0)
         self.highlight = Cursor()
+
+        self.dialogue = {}
 
         self.fileName = None
         self.fileContents = None
@@ -142,20 +146,20 @@ class TextEditor(TextDisplay):
         for i in self.dialogue.values():
             if i is not None:
                 command = i.update(screen)
-                if command is not None and screen.focus is i:
+                if command is not None:
                     command(i)
         p.display.set_caption("untitled")
 
     def exit_dialogue(self, instance):
         self.dialogue[instance.signature] = None
-        dialogue.pendingFocus = self
+        base.set_focus(self)
 
     def unfocus(self):
-        dialogue.pendingFocus = None
+        base.set_focus()
 
     def open_file(self):
-        self.dialogue["open_file"] = dialogue.Dialogue(self, "open_file", "Open file named:", (self.x + 5, self.y + 5))
-        dialogue.pendingFocus = self.dialogue["open_file"]
+        self.dialogue["open_file"] = dialogue.Dialogue(self, "open_file",
+                                                       "This feature is yet to be implemented.", (5, 5))
 
     def append(self, txt):
         if self.highlight.position is None:

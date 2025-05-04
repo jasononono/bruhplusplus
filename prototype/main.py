@@ -1,6 +1,6 @@
 import pygame as p
 import editor as edit
-import dialogue
+import base
 
 class Event:
     def __init__(self):
@@ -17,6 +17,7 @@ class Event:
 
 class Screen:
     def __init__(self, size = (800, 600), bg = (41, 41, 64)):
+        self.x, self.y = 0, 0
         self.width, self.height = size
         self.surface = p.display.set_mode((self.width, self.height))
         self.bg = bg
@@ -52,9 +53,9 @@ class Screen:
             if e.type == p.MOUSEBUTTONDOWN:
                 self.get_focus()
 
-        if dialogue.pendingFocus is not False:
-            self.focus = dialogue.pendingFocus
-            dialogue.pendingFocus = False
+        if base.pendingFocus is not False:
+            self.focus = base.pendingFocus
+            base.pendingFocus = False
 
         self.surface.fill(self.bg)
 

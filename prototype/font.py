@@ -1,10 +1,11 @@
 import pygame as p
 
 class Font:
-    def __init__(self, name = "Menlo", size = 15):
+    def __init__(self, name = "Menlo", size = 15, bold = False):
         self.name = name
         self.size = size
         self.template = p.font.SysFont(name, size)
+        self.template.set_bold(bold)
 
     def rename(self, name = "Menlo"):
         self.name = name
