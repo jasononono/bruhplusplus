@@ -2,27 +2,11 @@ from font import Font
 import dialogue
 import base
 import pygame as p
-
-class Cursor:
-    def __init__(self, position = None):
-        self.position = position
-        self.blinkRate = 15
-        self.blink = 0
-        self.colour = (255, 255, 255)
-
-    def update(self, surface, fontSize, coord, spacing, offset):
-        self.tick()
-        if self.blink < self.blinkRate:
-            p.draw.rect(surface, self.colour, (offset[0] + coord[0] * fontSize * spacing[0],
-                                                    offset[1] + coord[1] * fontSize * spacing[1], 1, fontSize))
-
-    def tick(self):
-        self.blink = (self.blink + 1) % (self.blinkRate * 2)
-
+from cursor import Cursor
 
 class TextDisplay:
     def __init__(self, text = "", pos = (0, 0), size = (800, 600), margin = (10, 10), spacing = (0.6, 1.2),
-                 font = "Menlo", fontSize = 15, bg = (33, 33, 43)):
+                 font = "Menlo", fontSize = 14, bg = (33, 33, 43)):
         self.text = text
         self.font = Font(font, fontSize)
 
@@ -59,9 +43,8 @@ class TextDisplay:
         return self.grid
 
     def update(self, screen):
-        if screen.focus is self:
-            p.draw.rect(screen.surface, (142, 142, 209),
-                        (self.x - 1, self.y - 1, self.width + 2, self.height + 2))
+        p.draw.rect(screen.surface, ((138, 138, 188) if screen.focus is self else (127, 127, 143)),
+                    (self.x - 1, self.y - 1, self.width + 2, self.height + 2))
         p.draw.rect(screen.surface, self.bg, (self.x, self.y, self.width, self.height))
 
         row, column = 0, 0
@@ -85,11 +68,12 @@ class TextDisplay:
 
 class TextEditor(TextDisplay):
     def __init__(self, text = "", pos = (0, 0), size = (800, 600), margin = (10, 10), spacing = (0.6, 1.2),
-                 font = "Menlo", fontSize = 15, bg = (28, 28, 43)):
+                 font = "Menlo", fontSize = 14, bg = (28, 28, 43)):
         super().__init__(text, pos, size, margin, spacing, font, fontSize, bg)
 
-        from editorAction import EditorAction
-        self.action = EditorAction(self)
+        from action import Action
+        from keyboard import keyboard
+        self.action = Action(self, keyboard)
         self.cursor = Cursor(0)
         self.highlight = Cursor()
 
@@ -126,10 +110,10 @@ class TextEditor(TextDisplay):
                        index < max(self.cursor.position, self.highlight.position))
 
         if highlighted:
-            rect = (coord[0], coord[1],
-                    (self.font.size * self.spacing[0] if text != '\n' else
-                     self.x + self.width - coord[0] - self.margin[0]), self.font.size * self.spacing[1])
-            p.draw.rect(screen.surface, ((67, 67, 156) if screen.focus is self else (70, 70, 70)), rect)
+            p.draw.rect(screen.surface, ((67, 67, 156) if screen.focus is self else (70, 70, 70)),
+                        (coord[0], coord[1],
+                         (int(self.font.size * self.spacing[0]) + 1 if text != '\n' else
+                          self.x + self.width - coord[0] - self.margin[0]), int(self.font.size * self.spacing[1]) + 1))
         if text != '\n':
             screen.surface.blit(self.font.render(text), coord)
 
@@ -139,27 +123,40 @@ class TextEditor(TextDisplay):
         if screen.focus is self:
             if self.highlight.position is None:
                 coord = self.get_coordinates(self.cursor.position)
-                self.cursor.update(screen.surface, self.font.size, coord, self.spacing,
-                                   (self.x + self.margin[0], self.y + self.margin[1]))
+                self.cursor.update(screen.surface, self.font, coord,
+                                   (self.x + self.margin[0], self.y + self.margin[1]), self.spacing)
+
             self.action.update(screen.event)
 
-        for i in self.dialogue.values():
-            if i is not None:
-                command = i.update(screen)
+        items = list(self.dialogue.items())
+        for i, j in items:
+            if j is not None:
+                command = j.update(screen)
                 if command is not None:
-                    command(i)
+                    self.end_dialogue(i, j, command)
         p.display.set_caption("untitled")
 
-    def exit_dialogue(self, instance):
-        self.dialogue[instance.signature] = None
+    def end_dialogue(self, signature, instance, command):
+        if command is not False:
+            if signature == "open_file":
+                try:
+                    file = open(instance.textInput, "r")
+                    self.text = file.read()
+                    self.cursor.position = len(self.text)
+                    self.highlight.position = None
+                except:
+                    self.dialogue["file_not_found"] = dialogue.Dialogue(self,f"File '{instance.textInput}' not found.",
+                                                                        (5, 5), "Error")
+
+        self.dialogue[signature] = None
         base.set_focus(self)
 
     def unfocus(self):
         base.set_focus()
 
     def open_file(self):
-        self.dialogue["open_file"] = dialogue.Dialogue(self, "open_file",
-                                                       "This feature is yet to be implemented.", (5, 5))
+        self.dialogue["open_file"] = dialogue.InputDialogue(self, "Enter file name.",
+                                                            (5, 5), "File Opener", ".bpp")
 
     def append(self, txt):
         if self.highlight.position is None:

@@ -35,7 +35,7 @@ class Screen:
         return False
 
     def get_focus(self):
-        for i in self.editor.dialogue.values():
+        for i in list(self.editor.dialogue.values())[::-1]:
             if i is None:
                 continue
             if self.is_focused(i):

@@ -15,7 +15,9 @@ class Font:
         self.size = size
         self.template = p.font.SysFont(self.name, size)
 
-    def get_size(self, text):
+    def get_size(self, text = None):
+        if text is None:
+            return self.template.size("A")
         return self.template.size(text)
 
     def render(self, text = '', colour = (255, 255, 255), background = None):
