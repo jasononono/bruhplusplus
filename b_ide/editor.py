@@ -1,278 +1,319 @@
-from keyboard import *
+from font import Font
+import dialogue
+import base
+import pygame as p
+import os.path
+from cursor import Cursor
 
-class Cursor:
-    def __init__(self, size):
-        self.size = size
-        self.blinkRate = 40
-        self.blink = 0
-        self.pos = 0
-        self.highlight = None
+class TextDisplay:
+    def __init__(self, text = "", pos = (0, 0), size = (800, 600), margin = (10, 10), spacing = (0.6, 1.2),
+                 font = "Menlo", fontSize = 14, bg = (33, 33, 43)):
+        self.text = text
+        self.font = Font(font, fontSize)
 
-    def Update(self, scr, row, column, topMargin, sideMargin, lineSpacing, charSpacing):
-        self.blink = (self.blink + 1) % self.blinkRate
-        if self.blink < (self.blinkRate - 1) / 2 and self.highlight is None:
-            pos = [sideMargin + self.size * column * charSpacing, topMargin + row * self.size * lineSpacing]
-            p.draw.rect(scr, [0, 0, 0], [pos[0], pos[1], 1, self.size])
+        self.x, self.y = pos
+        self.width, self.height = size
+        self.margin = margin
+        self.spacing = spacing
+        self.bg = bg
+        self.grid = []
 
-class Editor:
-    def __init__(self, fontName, fontSize):
-        self.text = ''
-        self.colour = []
-        self.fontSize = fontSize
-        self.font = p.font.SysFont(fontName, fontSize)
-        self.cursor = Cursor(fontSize)
-        self.topMargin = 10
-        self.sideMargin = 10
-        self.lineSpacing = 1.2
-        self.charSpacing = 0.6
-        self.msgbox = None
-        self.fileName = None
-        self.lastSaved = ''
-        
-    def Update(self, scr):
-        row = 0
-        column = 0
+    def valid_mouse_position(self, position):
+        if (position[0] < self.x or position[0] > self.x + self.width or
+                position[1] < self.y or position[1] > self.y + self.height):
+            return False
+        return True
+
+    def display(self, screen, text, index, position):
+        coord = (self.x + self.margin[0] + position[0] * self.font.size * self.spacing[0],
+                 self.y + self.margin[1] + position[1] * self.font.size * self.spacing[1])
+        if text != '\n':
+            screen.surface.blit(self.font.render(text), coord)
+
+    def get_grid(self):
+        row, column = 0, 0
+        self.grid = []
         for n, i in enumerate(self.text):
-            pos = [self.sideMargin + column * self.fontSize * self.charSpacing, self.topMargin + row * self.fontSize * self.lineSpacing]
-            highlighted = self.cursor.highlight is not None and min(self.cursor.pos, self.cursor.highlight) <= n < max(self.cursor.pos, self.cursor.highlight)
             if i == '\n':
+                self.grid.append(column)
                 column = 0
                 row += 1
-                if highlighted:
-                    p.draw.rect(scr, [150, 150, 150], [pos[0], pos[1], scrWidth, self.fontSize * self.lineSpacing])
             else:
-                if highlighted:
-                    scr.blit(self.font.render(i, True, [255, 255, 255], [150, 150, 150]), pos)
-                else:
-                    scr.blit(self.font.render(i, True, self.colour[n]), pos)
-                    
                 column += 1
+        self.grid.append(column)
+        return self.grid
 
-        coord = self.PosToCoord(self.cursor.pos)
-        self.cursor.Update(scr, coord[0], coord[1], self.topMargin, self.sideMargin, self.lineSpacing, self.charSpacing)
+    def update(self, screen):
+        p.draw.rect(screen.surface, ((138, 138, 188) if screen.focus is self else (127, 127, 143)),
+                    (self.x - 1, self.y - 1, self.width + 2, self.height + 2))
+        p.draw.rect(screen.surface, self.bg, (self.x, self.y, self.width, self.height))
 
-    def PosToCoord(self, pos = 0):
-        row = 0
-        column = 0
-        l = []
-        for i in range(pos):
-            if self.text[i] == '\n':
-                l.append(column)
-                column = -1
-                row += 1
-            column += 1
-        resRow, resCol = row, column
-        for i in range(pos, len(self.text)):
-            if self.text[i] == '\n':
-                l.append(column)
-                column = -1
-                row += 1
-            column += 1
-        l.append(column)
-        return resRow, resCol, l
+        row, column = 0, 0
+        self.grid = []
 
-    def CoordToPos(self, row, column, l = None):
-        if l is None:
-            l = self.PosToCoord(self)[2]
-        if column > l[row]:
-            column = l[row]
-        return sum(l[:row]) + row + column
-
-    def RawToCoord(self, pos):
-        l = self.PosToCoord()[2]
-        row = min(len(l) - 1, max(0, int((pos[1] - self.topMargin) / (self.fontSize * self.lineSpacing))))
-        column = max(0, round((pos[0] - self.sideMargin) / (self.fontSize * self.charSpacing)))
-        return row, column, l
-
-def Press(editor, key, mod):
-    if key in KB.map.keys() and mod != null:
-        key = KB.map[key][mod]
-        if key is None:
-            return
-        if callable(key):
-            editor = key(editor)
-        else:
-            if editor.cursor.highlight is None:
-                editor.text = editor.text[:editor.cursor.pos] + key + editor.text[editor.cursor.pos:]
-                editor.cursor.pos += len(key)
-            else:
-                editor.text = editor.text[:min(editor.cursor.pos, editor.cursor.highlight)] + key + editor.text[max(editor.cursor.pos, editor.cursor.highlight):]
-                editor.cursor.pos = min(editor.cursor.pos, editor.cursor.highlight) + len(key)
-            editor.cursor.highlight = None
-
-def GetModifier(keys):
-    s = k[p.K_LSHIFT] or k[p.K_RSHIFT]
-    c = k[p.K_LCTRL] or k[p.K_RCTRL] or k[p.K_LMETA] or k[p.K_RMETA]
-    a = k[p.K_LALT] or k[p.K_RALT]
-    
-    if s + c + a > 1:
-        return null
-    if s:
-        return shift
-    if c:
-        return ctrl
-    if a:
-        return alt
-    return None
-
-def Keyword(word, string):
-    if word == '':
-        return []
-    colour = [0, 0, 0]
-    
-    if string:
-        colour = [60, 180, 40]
-    elif word in S.functions.keys():
-        colour = [110, 50, 180]
-        
-    return [colour for _ in range(len(word))]
-
-def Colour():
-    result = []
-    word = ''
-    string = False
-    for i in editor.text:
-        if i == "'":
-            if string:
-                result.extend(Keyword(word + i, string))
-                word = ''
-            else:
-                result.extend(Keyword(word, string))
-                word = "'"
-            string = not string
-            continue
-
-        if i == ' ' or i == '\n':
-            result.extend(Keyword(word, string))
-            result.append([0, 0, 0])
-            word = ''
+        for n, i in enumerate(self.text):
+            self.display(screen, i, n, (column, row))
             if i == '\n':
-                string = False
-        else:
-            word += i
-            
-    result.extend(Keyword(word, string))
-    return result
-    
-def read(name):
-    try:
-        f = open(name, 'r')
-    except:
-        return FileNotFoundError
-    txt = f.read()
-    f.close()
-    return txt
-
-p.init()
-
-scrWidth, scrHeight = 800, 600
-scr = p.display.set_mode([scrWidth, scrHeight])
-
-overlay = p.Surface([scrWidth, scrHeight], p.SRCALPHA)
-overlay.fill([0, 0, 0, 100])
-
-editor = Editor('Menlo', 15)
-
-keyPressed = None
-keyCooldown = 0
-modifier = None
-
-cursorPos = 0
-cursorBlink = 0
-
-clock = p.time.Clock()
-run = True
-
-while run:
-    clock.tick(30)
-
-    if editor.msgbox is not None:
-        keyPressed = None
-        scr.fill([255, 255, 255])
-        editor.Update(scr)
-        scr.blit(overlay, [0, 0])
-        editor.msgbox.Update(scr)
-        p.display.flip()
-        
-        for e in p.event.get():
-            if e.type == p.QUIT:
-                editor = halt(editor)
-            if e.type == p.KEYDOWN:
-                editor.msgbox = editor.msgbox.KeyPressed(e)
-                if type(editor.msgbox) == list:
-                    if editor.msgbox[1] == 'r':
-                        result = read(editor.msgbox[0] + '.bpp')
-                        if result is FileNotFoundError:
-                            editor.msgbox = Msgbox(f"File '{editor.msgbox[0] + '.bpp'}' does not exist.", [350 + (len(editor.msgbox[0]) + 4) * 10, 50], msgOffset = 25)
-                            break
-                        else:
-                            editor.text = result
-                            editor.cursor.pos = len(editor.text)
-                            editor.fileName = editor.msgbox[0]
-                            editor.lastSaved = result
-                    elif editor.msgbox[1] == 'w':
-                        with open(editor.msgbox[0] + '.bpp', 'w') as f:
-                            f.write(editor.text)
-                        editor.lastSaved = editor.text
-                        editor.fileName = editor.msgbox[0]
-                    elif editor.msgbox[1] == 'q':
-                        run = False
-                    editor.msgbox = None
-                elif editor.msgbox is None:
-                    break
-        continue
-
-    # INPUTS
-    k = p.key.get_pressed()
-    m = p.mouse.get_pressed()
-    mp = p.mouse.get_pos()
-    modifier = GetModifier(k)
-
-    # EVENTS
-    for e in p.event.get():
-        if e.type == p.QUIT:
-            editor = halt(editor)
-        if e.type == p.KEYDOWN:
-            keyPressed = e.key
-            Press(editor, keyPressed, modifier)
-            keyCooldown = 10
-        if e.type == p.KEYUP and e.key == keyPressed:
-            keyPressed = None
-        if e.type == p.MOUSEBUTTONDOWN:
-            row, column, l = editor.RawToCoord(mp)
-            pos = editor.CoordToPos(row, column, l)
-            if modifier == shift:
-                editor.cursor.highlight = pos
+                self.grid.append(column)
+                column = 0
+                row += 1
             else:
-                editor.cursor.pos = pos
-                editor.cursor.blink = 0
-                editor.cursor.highlight = None
-                
-    # RELAY INPUT TO EDITOR
-    if keyPressed is not None:
-        if keyCooldown > 0:
-            keyCooldown -= 1
-        else:
-            Press(editor, keyPressed, modifier)
-            keyCooldown = 1
-    if m[0]:
-        r, c, l = editor.RawToCoord(mp)
-        m = editor.CoordToPos(r, c, l)
-        if m != editor.cursor.pos:
-            editor.cursor.highlight = m
-        else:
-            editor.cursor.highlight = None
-            
-    # UPDATE
-    scr.fill([255, 255, 255])
-    editor.colour = Colour()
-    editor.Update(scr)
-    p.display.flip()
+                column += 1
+        self.grid.append(column)
 
-    if editor.lastSaved == editor.text:
-        p.display.set_caption('untitled' if editor.fileName is None else f'{editor.fileName}.bpp')
-    else:
-        p.display.set_caption('*untitled*' if editor.fileName is None else f'*{editor.fileName}.bpp*')
+    def set_pos(self, pos = None):
+        self.x, self.y = pos
 
-p.quit()
-sys.exit()
+    def resize(self, size = None):
+        self.width, self.height = size
+
+class TextEditor(TextDisplay):
+    def __init__(self, text = "", pos = (0, 0), size = (800, 600), margin = (10, 10), spacing = (0.6, 1.2),
+                 font = "Menlo", fontSize = 14, bg = (28, 28, 43)):
+        super().__init__(text, pos, size, margin, spacing, font, fontSize, bg)
+
+        from action import Action
+        from keyboard import keyboard
+        self.action = Action(self, keyboard)
+        self.cursor = Cursor(0)
+        self.highlight = Cursor()
+
+        self.dialogue = {}
+
+        self.fileName = None
+        self.temporaryFileName = None
+        self.fileContent = ""
+
+    def get_coordinates(self, pos):
+        if pos < 0:
+            return 0, 0
+        total = 0
+        for i, j in enumerate(self.grid):
+            total += j + 1
+            if pos < total:
+                return pos - total + j + 1, i
+        return self.get_coordinates(len(self.text))
+
+    def get_position(self, coord):
+        column = max(coord[0], 0)
+        row = max(coord[1], 0)
+        pos = sum(self.grid[:row]) + row + min(self.grid[row], column)
+        return min(len(self.text), max(0, pos))
+
+    def get_mouse_coordinates(self, coord):
+        column = round((coord[0] - self.x - self.margin[0]) / self.spacing[0] / self.font.size)
+        row = min(int((coord[1] - self.y - self.margin[1]) / self.spacing[1] / self.font.size), len(self.grid) - 1)
+        return column, row
+
+    def display(self, screen, text, index, position):
+        coord = (self.x + self.margin[0] + position[0] * self.font.size * self.spacing[0],
+                 self.y + self.margin[1] + position[1] * self.font.size * self.spacing[1])
+        highlighted = (self.highlight.position is not None and min(self.cursor.position, self.highlight.position) <=
+                       index < max(self.cursor.position, self.highlight.position))
+
+        if highlighted:
+            p.draw.rect(screen.surface, ((67, 67, 156) if screen.focus is self else (70, 70, 70)),
+                        (coord[0], coord[1],
+                         (int(self.font.size * self.spacing[0]) + 1 if text != '\n' else
+                          self.x + self.width - coord[0] - self.margin[0]), int(self.font.size * self.spacing[1]) + 1))
+        if text != '\n':
+            screen.surface.blit(self.font.render(text), coord)
+
+    def update(self, screen):
+        super().update(screen)
+
+        if screen.focus is self:
+            if self.highlight.position is None:
+                coord = self.get_coordinates(self.cursor.position)
+                self.cursor.update(screen.surface, self.font, coord,
+                                   (self.x + self.margin[0], self.y + self.margin[1]), self.spacing)
+
+            self.action.update(screen.event)
+
+        items = list(self.dialogue.items())
+        for i, j in items:
+            if j is not None:
+                command = j.update(screen)
+                if command is not None:
+                    self.end_dialogue(i, j, command)
+
+        if self.fileName is None:
+            p.display.set_caption("Bruh++ Editor 3.0" if self.fileContent == self.text else "*Bruh++ Editor 3.0*")
+        else:
+            p.display.set_caption(self.fileName if self.fileContent == self.text else f"*{self.fileName}*")
+
+    def end_dialogue(self, signature, instance, command):
+        base.set_focus(self)
+
+        if command is not False:
+            if signature == "open_file":
+                if os.path.exists(instance.textInput):
+                    if self.fileContent != self.text:
+                        self.dialogue["unsaved_file"] = dialogue.ConfirmDialogue(self, f"File contents unsaved. Save before exiting?",
+                                                                                     (5, 5), "Warning")
+                        self.temporaryFileName = instance.textInput
+                    else:
+                        self.read_file(instance.textInput)
+                else:
+                    self.dialogue["file_not_found"] = dialogue.Dialogue(self,f"File '{instance.textInput}' not found.",
+                                                                        (5, 5), "Error", initial_focus = True)
+
+            elif signature == "save_file":
+                if os.path.exists(instance.textInput):
+                    self.dialogue["conflicted_file_name"] = dialogue.ConfirmDialogue(self, f"File '{instance.textInput}' already exists. Replace?",
+                                                                                     (5, 5), "Warning")
+                    self.temporaryFileName = instance.textInput
+                else:
+                    self.write_file(instance.textInput)
+
+            elif signature == "conflicted_file_name":
+                self.write_file(self.temporaryFileName)
+
+            elif signature == "unsaved_file":
+                if self.fileName is None:
+                    self.dialogue["save_file"] = dialogue.InputDialogue(self, "Save file as:",
+                                                                        (5, 5), "Save File", ".bpp")
+                else:
+                    with open(self.fileName, 'w') as file:
+                        file.write(self.text)
+                        self.fileContent = self.text
+                    self.read_file(self.temporaryFileName)
+
+        self.dialogue[signature] = None
+
+    def unfocus(self):
+        base.set_focus()
+
+    def write_file(self, name):
+        with open(name, 'w') as file:
+            file.write(self.text)
+            self.fileContent = self.text
+            self.fileName = name
+
+    def read_file(self, name):
+        if name is None:
+            self.fileName = None
+            self.fileContent = ""
+            self.text = ""
+            self.cursor.position = 0
+        else:
+            with open(name, 'r') as file:
+                self.text = file.read()
+                self.cursor.position = len(self.text)
+                self.fileName = name
+                self.fileContent = self.text
+        self.highlight.position = None
+
+    def open_file(self):
+        self.dialogue["open_file"] = dialogue.InputDialogue(self, "Enter file name:",
+                                                            (5, 5), "Open File", ".bpp")
+
+    def save_file(self):
+        if self.fileName is None:
+            self.dialogue["save_file"] = dialogue.InputDialogue(self, "Save file as:",
+                                                                (5, 5), "Save File", ".bpp")
+        else:
+            with open(self.fileName, 'w') as file:
+                file.write(self.text)
+                self.fileContent = self.text
+
+    def new_file(self):
+        if self.fileContent != self.text:
+            self.dialogue["unsaved_file"] = dialogue.ConfirmDialogue(self,
+                                                                     f"File contents unsaved. Save before exiting?",
+                                                                     (5, 5), "Warning")
+            self.temporaryFileName = None
+        else:
+            self.read_file(None)
+
+
+    def unsaved_file(self):
+        self.dialogue["unsaved_file"] = dialogue.ConfirmDialogue(self, f"File not saved. Save before exiting?",
+                                                                                     (5, 5), "Warning")
+
+    def append(self, txt):
+        if self.highlight.position is None:
+            self.text = self.text[:self.cursor.position] + txt + self.text[self.cursor.position:]
+            self.cursor.position += len(txt)
+        else:
+            self.text = (self.text[:min(self.cursor.position, self.highlight.position)] + txt +
+                         self.text[max(self.cursor.position, self.highlight.position):])
+            self.cursor.position = min(self.cursor.position, self.highlight.position) + len(txt)
+        self.highlight.position = None
+
+    def delete(self):
+        if self.highlight.position is not None:
+            self.text = (self.text[:min(self.cursor.position, self.highlight.position)] +
+                         self.text[max(self.cursor.position, self.highlight.position):])
+            self.cursor.position = min(self.cursor.position, self.highlight.position)
+        elif self.cursor.position > 0:
+            self.text = self.text[:self.cursor.position - 1] + self.text[self.cursor.position:]
+            self.cursor.position -= 1
+        self.highlight.position = None
+
+    def cursor_left(self):
+        if self.highlight.position is not None:
+            self.cursor.position = min(self.cursor.position, self.highlight.position)
+            self.highlight.position = None
+        elif self.cursor.position > 0:
+            self.cursor.position -= 1
+        self.cursor.blink = 0
+
+    def cursor_right(self):
+        if self.highlight.position is not None:
+            self.cursor.position = max(self.cursor.position, self.highlight.position)
+            self.highlight.position = None
+        elif self.cursor.position < len(self.text):
+            self.cursor.position += 1
+        self.cursor.blink = 0
+
+    def cursor_down(self):
+        if self.highlight.position is not None:
+            self.cursor.position = max(self.cursor.position, self.highlight.position)
+            self.highlight.position = None
+        column, row = self.get_coordinates(self.cursor.position)
+        self.cursor.position = len(self.text) if row == len(self.grid) - 1 else self.get_position((row + 1, column))
+        self.cursor.blink = 0
+
+    def cursor_up(self):
+        if self.highlight.position is not None:
+            self.cursor.position = min(self.cursor.position, self.highlight.position)
+            self.highlight.position = None
+        column, row = self.get_coordinates(self.cursor.position)
+        self.cursor.position = 0 if row == 0 else self.get_position((row - 1, column))
+        self.cursor.blink = 0
+
+    def highlight_left(self):
+        if self.highlight.position is None:
+            self.highlight.position = self.cursor.position
+        if self.cursor.position > 0:
+            self.cursor.position -= 1
+        self.cursor.blink = 0
+
+    def highlight_right(self):
+        if self.highlight.position is None:
+            self.highlight.position = self.cursor.position
+        if self.cursor.position < len(self.text):
+            self.cursor.position += 1
+        self.cursor.blink = 0
+
+    def highlight_down(self):
+        if self.highlight.position is None:
+            self.highlight.position = self.cursor.position
+        column, row = self.get_coordinates(self.cursor.position)
+        self.cursor.position = len(self.text) if row == len(self.grid) - 1 else self.get_position((row + 1, column))
+        self.cursor.blink = 0
+
+    def highlight_up(self):
+        if self.highlight.position is None:
+            self.highlight.position = self.cursor.position
+        column, row = self.get_coordinates(self.cursor.position)
+        self.cursor.position = 0 if row == 0 else self.get_position((row - 1, column))
+        self.cursor.blink = 0
+
+    def select_all(self):
+        self.highlight.position = 0
+        self.cursor.position = len(self.text)
+
+    def indent(self):
+        self.append("    ")

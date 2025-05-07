@@ -1,258 +1,138 @@
-########## IMPORT ##########
-
 import pygame as p
-import sys
-from syntax import *
+from editor import TextEditor
+from dialogue import InputDialogue
 
-########## MODIFIER KEYS ##########
+class Key:
+    def __init__(self, base = None, shift = None, ctrl = None, alt = None):
+        self.base = base
+        self.shift = shift
+        self.ctrl = ctrl
+        self.alt = alt
 
-class null:
-    pass
-
-class shift:
-    pass
-
-class ctrl:
-    pass
-
-class alt:
-    pass
-
-class Msgbox:
-    def __init__(self, msg, size, font = None, fontSize = 20, msgOffset = 16):
-        self.msg = msg
-        self.width, self.height = size
-        self.scrWidth , self.scrHeight = p.display.get_window_size()
-        if font is None:
-            self.font = 'Menlo'
-        else:
-            self.font = font
-        self.fontSize = fontSize
-        self.text = p.font.SysFont(self.font, self.fontSize).render(self.msg, True, [0, 0, 0])
-        self.textRect = self.text.get_rect(center = [self.scrWidth / 2, (self.scrHeight - size[1]) / 2 + msgOffset])
-
-    def Update(self, scr):
-        p.draw.rect(scr, [255, 255, 255], [(self.scrWidth - self.width) / 2, (self.scrHeight - self.height) / 2, self.width, self.height])
-        scr.blit(self.text, self.textRect)
-
-    def KeyPressed(self, event):
-        if event.key == p.K_ESCAPE or event.key == p.K_RETURN:
-            return None
-        return self
-
-class YNbox(Msgbox):
-    def __init__(self, msg, intent, size, font = None, fontSize = 20, msgOffset = 16):
-        super().__init__(msg, size, font, fontSize, msgOffset)
-        self.intent = intent
-
-    def Update(self, scr):
-        super().Update(scr)
-
-    def KeyPressed(self, event):
-        if event.key == p.K_n:
-            return None
-        if event.key == p.K_y or event.key == p.K_RETURN:
-            return [True, self.intent]
-        return super().KeyPressed(event)
-
-class FileInput(Msgbox):
-    def __init__(self, msg, intent, size, font = None, fontSize = 20, msgOffset = 25, inputOffset = 40):
-        super().__init__(msg, size, font, fontSize, msgOffset)
-        self.inputTxt = ''
-        self.inputOffset = inputOffset
-        self.intent = intent
-
-    def Update(self, scr):
-        super().Update(scr)
-        inputText = p.font.SysFont(self.font, self.fontSize).render(self.inputTxt + '.bpp', True, [0, 0, 0])
-        p.draw.rect(scr, [0, 0, 0], [(self.scrWidth - self.width) / 2 + 10, (self.scrHeight + self.height) / 2 - self.inputOffset, self.width - 20, self.fontSize * 1.6], 2)
-        scr.blit(inputText, [(self.scrWidth - self.width) / 2 + 15, (self.scrHeight + self.height) / 2 - self.inputOffset + 5])
-
-    def KeyPressed(self, event):
-        if event.unicode.lower() in '1234567890qwertyuiopasdfghjklzxcvbnm-_':
-            self.inputTxt += event.unicode
-        elif event.key == p.K_BACKSPACE:
-            self.inputTxt = self.inputTxt[:-1]
-        elif event.key == p.K_RETURN:
-            return [self.inputTxt, self.intent]
-        return super().KeyPressed(event)
-        
-
-########## FUNCTIONS ##########
-
-def delete(editor):
-    if editor.cursor.highlight is not None:
-        editor.text = editor.text[:min(editor.cursor.pos, editor.cursor.highlight)] + editor.text[max(editor.cursor.pos, editor.cursor.highlight):]
-        editor.cursor.pos = min(editor.cursor.pos, editor.cursor.highlight)
-    elif editor.cursor.pos > 0:
-        editor.text = editor.text[:editor.cursor.pos - 1] + editor.text[editor.cursor.pos:]
-        editor.cursor.pos -= 1
-    editor.cursor.highlight = None
-    return editor
-
-def quickdel(editor):
-    if editor.cursor.highlight is not None:
-        return delete(editor)
-    for i in range(editor.cursor.pos - 2, -1, -1):
-        if editor.text[i] == ' ' or editor.text[i] == '\n':
-            editor.text = editor.text[:i + 1] + editor.text[editor.cursor.pos:]
-            editor.cursor.pos = i + 1
-            return editor
-    editor.text = editor.text[editor.cursor.pos:]
-    editor.cursor.pos = 0
-    return editor
-        
-def indent(editor):
-    if editor.cursor.highlight is None:
-        editor.text = editor.text[:editor.cursor.pos] + '   ' + editor.text[editor.cursor.pos:]
-        editor.cursor.pos += 3
-    else:
-        editor.text = editor.text[:min(editor.cursor.pos, editor.cursor.highlight)] + '   ' + editor.text[max(editor.cursor.pos, editor.cursor.highlight):]
-        editor.cursor.pos = min(editor.cursor.pos, editor.cursor.highlight) + 3
-    editor.cursor.highlight = None
-    return editor
-
-def dedent(editor):
-    return editor
-
-def highlightAll(editor):
-    editor.cursor.highlight = 0
-    editor.cursor.pos = len(editor.text)
-    return editor
-
-def cursorLeft(editor):
-    if editor.cursor.highlight is not None:
-        editor.cursor.highlight = None
-    elif editor.cursor.pos > 0:
-        editor.cursor.pos -= 1
-    editor.cursor.blink = 0
-    return editor
-
-def cursorRight(editor):
-    if editor.cursor.highlight is not None:
-        editor.cursor.highlight = None
-    elif editor.cursor.pos < len(editor.text):
-        editor.cursor.pos += 1
-    editor.cursor.blink = 0
-    return editor
-
-def cursorDown(editor):
-    if editor.cursor.highlight is not None:
-        editor.cursor.highlight = None
-    else:
-        row, column, l = editor.PosToCoord(editor.cursor.pos)
-        if row == len(l) - 1:
-            editor.cursor.pos = len(editor.text)
-        elif editor.cursor.pos < len(editor.text):
-            editor.cursor.pos = editor.CoordToPos(row + 1, column, l)
-    editor.cursor.blink = 0
-    return editor
-
-def cursorUp(editor):
-    if editor.cursor.highlight is not None:
-        editor.cursor.highlight = None
-    else:
-        row, column, l = editor.PosToCoord(editor.cursor.pos)
-        if row == 0:
-            editor.cursor.pos = 0
-        elif editor.cursor.pos > 0:
-            editor.cursor.pos = editor.CoordToPos(row - 1, column, l)
-    editor.cursor.blink = 0
-    return editor
-
-def saveFile(editor):
-    if editor.fileName is None:
-        editor.msgbox = FileInput('Save file as:', 'w', [200, 100])
-    else:
-        with open(editor.fileName + '.bpp', 'w') as f:
-            f.write(editor.text)
-        editor.lastSaved = editor.text
-    return editor
-
-def newFile(editor):
-    editor.text = ''
-    editor.lastSaved = ''
-    editor.cursor.pos = 0
-    editor.fileName = None
-
-def openFile(editor):
-    editor.msgbox = FileInput('Open file named:', 'r', [250, 100])
-    return editor
-
-def run(editor):
-    return editor
-
-def halt(editor):
-    if editor.lastSaved == editor.text:
-        p.quit()
-        sys.exit()
-    editor.msgbox = YNbox('You have unsaved progress. Quit? (y/n)', 'q', [500, 50], msgOffset = 27)
-    return editor
-    
-
-########## KEYBOARD ##########
+    def __repr__(self):
+        return self.base
 
 class Keyboard:
     def __init__(self):
         self.map = {}
-        
-    def Assign(self, key, raw = None, s = None, c = None, a = None):
-        self.map[key] = {None: raw, shift: s, ctrl: c, alt: a}
 
-KB = Keyboard()
+    def assign(self, key, base = None, shift = None, ctrl = None, alt = None):
+        self.map[key] = Key(base, shift, ctrl, alt)
 
-KB.Assign(p.K_LEFT, cursorLeft)
-KB.Assign(p.K_RIGHT, cursorRight)
-KB.Assign(p.K_DOWN, cursorDown)
-KB.Assign(p.K_UP, cursorUp)
-KB.Assign(p.K_BACKSPACE, delete, c = quickdel)
-KB.Assign(p.K_TAB, indent)
-KB.Assign(p.K_RETURN, '\n', '\n')
-KB.Assign(p.K_SPACE, ' ', ' ')
-KB.Assign(p.K_1, '1', '!')
-KB.Assign(p.K_2, '2', '@')
-KB.Assign(p.K_3, '3', '#')
-KB.Assign(p.K_4, '4', '$')
-KB.Assign(p.K_5, '5', '%')
-KB.Assign(p.K_6, '6', '^')
-KB.Assign(p.K_7, '7', '&')
-KB.Assign(p.K_8, '8', '*')
-KB.Assign(p.K_9, '9', '(')
-KB.Assign(p.K_0, '0', ')')
-KB.Assign(p.K_BACKQUOTE, '`', '~')
-KB.Assign(p.K_MINUS, '-', '_')
-KB.Assign(p.K_EQUALS, '=', '+')
-KB.Assign(p.K_LEFTBRACKET, '[', '{')
-KB.Assign(p.K_RIGHTBRACKET, ']', '}')
-KB.Assign(p.K_BACKSLASH, '\\', '|')
-KB.Assign(p.K_SEMICOLON, ';', ':')
-KB.Assign(p.K_QUOTE, "'", '"')
-KB.Assign(p.K_COMMA, ',', '<')
-KB.Assign(p.K_PERIOD, '.', '>')
-KB.Assign(p.K_SLASH, '/', '?')
-KB.Assign(p.K_q, 'q', 'Q')
-KB.Assign(p.K_w, 'w', 'W', halt)
-KB.Assign(p.K_e, 'e', 'E')
-KB.Assign(p.K_r, 'r', 'R', run)
-KB.Assign(p.K_t, 't', 'T')
-KB.Assign(p.K_y, 'y', 'Y')
-KB.Assign(p.K_u, 'u', 'U')
-KB.Assign(p.K_i, 'i', 'I')
-KB.Assign(p.K_o, 'o', 'O', openFile)
-KB.Assign(p.K_p, 'p', 'P')
-KB.Assign(p.K_a, 'a', 'A', highlightAll)
-KB.Assign(p.K_s, 's', 'S', saveFile)
-KB.Assign(p.K_d, 'd', 'D')
-KB.Assign(p.K_f, 'f', 'F')
-KB.Assign(p.K_g, 'g', 'G')
-KB.Assign(p.K_h, 'h', 'H')
-KB.Assign(p.K_j, 'j', 'J')
-KB.Assign(p.K_k, 'k', 'K')
-KB.Assign(p.K_l, 'l', 'L')
-KB.Assign(p.K_z, 'z', 'Z')
-KB.Assign(p.K_x, 'x', 'X')
-KB.Assign(p.K_c, 'c', 'C')
-KB.Assign(p.K_v, 'v', 'V')
-KB.Assign(p.K_b, 'b', 'B')
-KB.Assign(p.K_n, 'n', 'N', newFile)
-KB.Assign(p.K_m, 'm', 'M')
+    def retrieve(self, key, modifier = None):
+        if modifier == "shift":
+            return self.map[key].shift
+        if modifier == "ctrl":
+            return self.map[key].ctrl
+        if modifier == "alt":
+            return self.map[key].alt
+
+        return self.map[key].base
+
+keyboard = Keyboard()
+
+keyboard.assign(p.K_LEFT, TextEditor.cursor_left, TextEditor.highlight_left)
+keyboard.assign(p.K_RIGHT, TextEditor.cursor_right, TextEditor.highlight_right)
+keyboard.assign(p.K_DOWN, TextEditor.cursor_down, TextEditor.highlight_down)
+keyboard.assign(p.K_UP, TextEditor.cursor_up, TextEditor.highlight_up)
+keyboard.assign(p.K_ESCAPE, TextEditor.unfocus)
+keyboard.assign(p.K_BACKSPACE, TextEditor.delete)
+keyboard.assign(p.K_TAB, TextEditor.indent)
+keyboard.assign(p.K_RETURN, '\n')
+keyboard.assign(p.K_SPACE, ' ', ' ')
+keyboard.assign(p.K_1, '1', '!')
+keyboard.assign(p.K_2, '2', '@')
+keyboard.assign(p.K_3, '3', '#')
+keyboard.assign(p.K_4, '4', '$')
+keyboard.assign(p.K_5, '5', '%')
+keyboard.assign(p.K_6, '6', '^')
+keyboard.assign(p.K_7, '7', '&')
+keyboard.assign(p.K_8, '8', '*')
+keyboard.assign(p.K_9, '9', '(')
+keyboard.assign(p.K_0, '0', ')')
+keyboard.assign(p.K_BACKQUOTE, '`', '~')
+keyboard.assign(p.K_MINUS, '-', '_')
+keyboard.assign(p.K_EQUALS, '=', '+')
+keyboard.assign(p.K_LEFTBRACKET, '[', '{')
+keyboard.assign(p.K_RIGHTBRACKET, ']', '}')
+keyboard.assign(p.K_BACKSLASH, '\\', '|')
+keyboard.assign(p.K_SEMICOLON, ';', ':')
+keyboard.assign(p.K_QUOTE, "'", '"')
+keyboard.assign(p.K_COMMA, ',', '<')
+keyboard.assign(p.K_PERIOD, '.', '>')
+keyboard.assign(p.K_SLASH, '/', '?')
+keyboard.assign(p.K_q, 'q', 'Q')
+keyboard.assign(p.K_w, 'w', 'W')
+keyboard.assign(p.K_e, 'e', 'E')
+keyboard.assign(p.K_r, 'r', 'R')
+keyboard.assign(p.K_t, 't', 'T')
+keyboard.assign(p.K_y, 'y', 'Y')
+keyboard.assign(p.K_u, 'u', 'U')
+keyboard.assign(p.K_i, 'i', 'I')
+keyboard.assign(p.K_o, 'o', 'O', TextEditor.open_file)
+keyboard.assign(p.K_p, 'p', 'P')
+keyboard.assign(p.K_a, 'a', 'A', TextEditor.select_all)
+keyboard.assign(p.K_s, 's', 'S', TextEditor.save_file)
+keyboard.assign(p.K_d, 'd', 'D')
+keyboard.assign(p.K_f, 'f', 'F')
+keyboard.assign(p.K_g, 'g', 'G')
+keyboard.assign(p.K_h, 'h', 'H')
+keyboard.assign(p.K_j, 'j', 'J')
+keyboard.assign(p.K_k, 'k', 'K')
+keyboard.assign(p.K_l, 'l', 'L')
+keyboard.assign(p.K_z, 'z', 'Z')
+keyboard.assign(p.K_x, 'x', 'X')
+keyboard.assign(p.K_c, 'c', 'C')
+keyboard.assign(p.K_v, 'v', 'V')
+keyboard.assign(p.K_b, 'b', 'B')
+keyboard.assign(p.K_n, 'n', 'N', TextEditor.new_file)
+keyboard.assign(p.K_m, 'm', 'M')
+
+
+inputKeyboard = Keyboard()
+
+inputKeyboard.assign(p.K_LEFT, InputDialogue.cursor_left, InputDialogue.highlight_left)
+inputKeyboard.assign(p.K_RIGHT, InputDialogue.cursor_right, InputDialogue.highlight_right)
+inputKeyboard.assign(p.K_DOWN, InputDialogue.cursor_down, InputDialogue.highlight_down)
+inputKeyboard.assign(p.K_UP, InputDialogue.cursor_up, InputDialogue.highlight_up)
+inputKeyboard.assign(p.K_BACKSPACE, InputDialogue.delete)
+inputKeyboard.assign(p.K_SPACE, ' ', ' ')
+inputKeyboard.assign(p.K_1, '1')
+inputKeyboard.assign(p.K_2, '2')
+inputKeyboard.assign(p.K_3, '3')
+inputKeyboard.assign(p.K_4, '4')
+inputKeyboard.assign(p.K_5, '5')
+inputKeyboard.assign(p.K_6, '6')
+inputKeyboard.assign(p.K_7, '7')
+inputKeyboard.assign(p.K_8, '8', '*')
+inputKeyboard.assign(p.K_9, '9', '(')
+inputKeyboard.assign(p.K_0, '0', ')')
+inputKeyboard.assign(p.K_MINUS, '-', '_')
+inputKeyboard.assign(p.K_COMMA, ',')
+inputKeyboard.assign(p.K_PERIOD, '.')
+inputKeyboard.assign(p.K_q, 'q', 'Q')
+inputKeyboard.assign(p.K_w, 'w', 'W')
+inputKeyboard.assign(p.K_e, 'e', 'E')
+inputKeyboard.assign(p.K_r, 'r', 'R')
+inputKeyboard.assign(p.K_t, 't', 'T')
+inputKeyboard.assign(p.K_y, 'y', 'Y')
+inputKeyboard.assign(p.K_u, 'u', 'U')
+inputKeyboard.assign(p.K_i, 'i', 'I')
+inputKeyboard.assign(p.K_o, 'o', 'O')
+inputKeyboard.assign(p.K_p, 'p', 'P')
+inputKeyboard.assign(p.K_a, 'a', 'A', InputDialogue.select_all)
+inputKeyboard.assign(p.K_s, 's', 'S')
+inputKeyboard.assign(p.K_d, 'd', 'D')
+inputKeyboard.assign(p.K_f, 'f', 'F')
+inputKeyboard.assign(p.K_g, 'g', 'G')
+inputKeyboard.assign(p.K_h, 'h', 'H')
+inputKeyboard.assign(p.K_j, 'j', 'J')
+inputKeyboard.assign(p.K_k, 'k', 'K')
+inputKeyboard.assign(p.K_l, 'l', 'L')
+inputKeyboard.assign(p.K_z, 'z', 'Z')
+inputKeyboard.assign(p.K_x, 'x', 'X')
+inputKeyboard.assign(p.K_c, 'c', 'C')
+inputKeyboard.assign(p.K_v, 'v', 'V')
+inputKeyboard.assign(p.K_b, 'b', 'B')
+inputKeyboard.assign(p.K_n, 'n', 'N')
+inputKeyboard.assign(p.K_m, 'm', 'M')

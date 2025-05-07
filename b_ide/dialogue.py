@@ -51,14 +51,17 @@ class TextButton(ButtonTemplate):
                  colour = (55, 55, 65), highlight_colour = (45, 45, 55)):
         self.text = text
         self.font = Font(size = fontSize, bold = True)
+        self.status = True
         super().__init__(parent, command, position, self.get_size(), colour, highlight_colour)
 
     def get_size(self):
         return [i + 10 for i in self.font.get_size(self.text)]
 
     def update(self, screen):
-        action = super().update(screen)
-        screen.surface.blit(self.font.render(self.text), (self.absX + 5, self.absY + 5))
+        action = None
+        if self.status:
+            action = super().update(screen)
+        screen.surface.blit(self.font.render(self.text, ((255, 255, 255) if self.status else (150, 150, 150))), (self.absX + 5, self.absY + 5))
         return action
 
 
@@ -121,7 +124,7 @@ class Dialogue:
         if action is not None:
             return action
 
-        if screen.focus is self:
+        if screen.focus is self and p.KEYDOWN in [e.type for e in screen.event.events]:
             for i, j in self.keybind.items():
                 if screen.event.keys[i]:
                     return j
@@ -134,10 +137,10 @@ class Dialogue:
         return False
 
 class ButtonDialogue(Dialogue):
-    def __init__(self, parent, text = "Confirm action?", options = None, position = (0, 0), title = "Notice",
+    def __init__(self, parent, text = "Choose an option:", options = None, position = (0, 0), title = "Notice",
                  life = float('inf'), initial_focus = True, option_offset = 0):
         if options is None:
-            self.options = {"Confirm": True, "Cancel": False}
+            self.options = {"Option 1": 1, "Option 2": 2}
         else:
             self.options = options
         self.buttons = []
@@ -168,13 +171,18 @@ class ButtonDialogue(Dialogue):
                 return button_action
         return None
 
-class InputDialogue(ButtonDialogue):
+class ConfirmDialogue(ButtonDialogue):
+    def __init__(self, parent, text = "Confirm action?", position = (0, 0), title = "Notice", option_offset = 0):
+        super().__init__(parent, text, {"Confirm": True, "Cancel": False}, position, title,
+                         option_offset = option_offset)
+        self.bind(p.K_RETURN, True)
+
+class InputDialogue(ConfirmDialogue):
     def __init__(self, parent, text = "Confirm action?", position = (0, 0),title = "Notice",
                  text_input = ""):
         self.inputFont = Font(size = 15)
         self.textInput = text_input
-        super().__init__(parent, text, None, position, title,
-                         option_offset = self.inputFont.get_size()[1] + 15)
+        super().__init__(parent, text, position, title, self.inputFont.get_size()[1] + 15)
         from action import Action
         from keyboard import inputKeyboard
         self.action = Action(self, inputKeyboard, self.valid_input_position)
