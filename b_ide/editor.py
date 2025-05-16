@@ -148,12 +148,7 @@ class TextEditor(TextDisplay):
         if command is not False:
             if signature == "open_file":
                 if os.path.exists(instance.textInput):
-                    if self.fileContent != self.text:
-                        self.dialogue["unsaved_file"] = dialogue.ConfirmDialogue(self, f"File contents unsaved. Save before exiting?",
-                                                                                     (5, 5), "Warning")
-                        self.temporaryFileName = instance.textInput
-                    else:
-                        self.read_file(instance.textInput)
+                    self.read_file(instance.textInput)
                 else:
                     self.dialogue["file_not_found"] = dialogue.Dialogue(self,f"File '{instance.textInput}' not found.",
                                                                         (5, 5), "Error", initial_focus = True)
@@ -168,16 +163,6 @@ class TextEditor(TextDisplay):
 
             elif signature == "conflicted_file_name":
                 self.write_file(self.temporaryFileName)
-
-            elif signature == "unsaved_file":
-                if self.fileName is None:
-                    self.dialogue["save_file"] = dialogue.InputDialogue(self, "Save file as:",
-                                                                        (5, 5), "Save File", ".bpp")
-                else:
-                    with open(self.fileName, 'w') as file:
-                        file.write(self.text)
-                        self.fileContent = self.text
-                    self.read_file(self.temporaryFileName)
 
         self.dialogue[signature] = None
 
@@ -218,13 +203,7 @@ class TextEditor(TextDisplay):
                 self.fileContent = self.text
 
     def new_file(self):
-        if self.fileContent != self.text:
-            self.dialogue["unsaved_file"] = dialogue.ConfirmDialogue(self,
-                                                                     f"File contents unsaved. Save before exiting?",
-                                                                     (5, 5), "Warning")
-            self.temporaryFileName = None
-        else:
-            self.read_file(None)
+        self.read_file(None)
 
 
     def unsaved_file(self):

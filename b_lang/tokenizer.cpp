@@ -146,7 +146,7 @@ namespace bpp_parser {
                         endToken(currentToken, tokens);
                     }
                     break;
-                
+
                 case '\\':
                     if (currentToken.mType == STRING_LITERAL) {
                         currentToken.mType = STRING_ESCAPE_SEQUENCE;

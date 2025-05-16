@@ -20,7 +20,8 @@ class ButtonTemplate:
         if screen.focus is self.parent and self.valid_mouse_position(screen.event.mousePos):
             p.draw.rect(screen.surface, self.highlightColour,
                         (self.absX, self.absY, self.width, self.height))
-            if screen.event.mouse[0] and self.valid_mouse_position(screen.event.mousePos):
+            if (p.MOUSEBUTTONDOWN in [e.type for e in screen.event.events] and
+                self.valid_mouse_position(screen.event.mousePos)):
                 return self.command
         else:
             p.draw.rect(screen.surface, self.colour,

@@ -1,4 +1,0 @@
-void main(int argc, char argv) {
-    double foo = 1.5;
-    printf('hello');
-}
