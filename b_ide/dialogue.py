@@ -107,6 +107,9 @@ class Dialogue:
             return False
         if screen.focus is self:
             self.age = 0
+        if self.valid_mouse_position(screen.event.mousePos):
+            p.mouse.set_cursor(p.SYSTEM_CURSOR_ARROW)
+
         p.draw.rect(screen.surface, ((138, 138, 188) if screen.focus is self else (127, 127, 143)),
                     (self.absX - 1, self.absY - 1,
                      self.width + 2, self.height + 2))

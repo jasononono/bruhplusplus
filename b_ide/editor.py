@@ -19,10 +19,10 @@ class TextDisplay:
         self.grid = []
 
     def valid_mouse_position(self, position):
-        if (position[0] < self.x or position[0] > self.x + self.width or
-                position[1] < self.y or position[1] > self.y + self.height):
-            return False
-        return True
+        if (self.x < position[0] < self.x + self.width and
+            self.y < position[1] < self.y + self.height):
+            return True
+        return False
 
     def display(self, screen, text, index, position):
         coord = (self.x + self.margin[0] + position[0] * self.font.size * self.spacing[0],
@@ -129,6 +129,11 @@ class TextEditor(TextDisplay):
                                    (self.x + self.margin[0], self.y + self.margin[1]), self.spacing)
 
             self.action.update(screen.event)
+
+        if self.valid_mouse_position(screen.event.mousePos):
+            p.mouse.set_cursor(p.SYSTEM_CURSOR_IBEAM)
+        else:
+            p.mouse.set_cursor(p.SYSTEM_CURSOR_ARROW)
 
         items = list(self.dialogue.items())
         for i, j in items:
