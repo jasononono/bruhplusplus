@@ -7,9 +7,9 @@ from cursor import Cursor
 
 class TextDisplay:
     def __init__(self, text = "", pos = (0, 0), size = (800, 600), margin = (10, 10), spacing = (0.6, 1.2),
-                 font = "Menlo", fontSize = 14, bg = (33, 33, 43)):
+                 font = "Menlo", font_size = 14, bg = (33, 33, 43)):
         self.text = text
-        self.font = Font(font, fontSize)
+        self.font = Font(font, font_size)
 
         self.x, self.y = pos
         self.width, self.height = size
@@ -69,8 +69,8 @@ class TextDisplay:
 
 class TextEditor(TextDisplay):
     def __init__(self, text = "", pos = (0, 0), size = (800, 600), margin = (10, 10), spacing = (0.6, 1.2),
-                 font = "Menlo", fontSize = 14, bg = (28, 28, 43)):
-        super().__init__(text, pos, size, margin, spacing, font, fontSize, bg)
+                 font = "Menlo", font_size = 14, bg = (28, 28, 43)):
+        super().__init__(text, pos, size, margin, spacing, font, font_size, bg)
 
         from action import Action
         from keyboard import keyboard
